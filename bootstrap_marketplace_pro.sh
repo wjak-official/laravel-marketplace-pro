@@ -206,7 +206,7 @@ class SecurityHeaders
 PHP
 
 echo "==> Register middleware aliases"
-php - <<'PHPEOF'
+php /dev/stdin <<'PHPEOF'
 <?php
 $path="app/Http/Kernel.php"; $c=file_get_contents($path);
 if (strpos($c,"SecurityHeaders::class")===false) {
