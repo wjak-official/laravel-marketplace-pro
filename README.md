@@ -11,16 +11,16 @@
 
 ```bash
 # Download the script
-wget https://raw.githubusercontent.com/wjak-official/laravel-marketplace-pro/main/bootstrap_marketplace_pro.sh
+wget https://raw.githubusercontent.com/wjak-official/laravel-marketplace-pro/main/installer.sh
 
 # Make it executable
-chmod +x bootstrap_marketplace_pro.sh
+chmod +x installer.sh
 
 # Run with default settings
-./bootstrap_marketplace_pro.sh
+./installer.sh
 
 # Or with custom app directory
-./bootstrap_marketplace_pro.sh my-marketplace
+./installer.sh my-marketplace
 ```
 
 ## 📋 Table of Contents
@@ -89,17 +89,17 @@ chmod +x bootstrap_marketplace_pro.sh
 
 ```bash
 # Clone or download the script
-git clone https://github.com/YOUR_USERNAME/laravel-marketplace-pro.git
+git clone https://github.com/wjak-official/laravel-marketplace-pro.git
 cd laravel-marketplace-pro
 
 # Make script executable
-chmod +x bootstrap_marketplace_pro.sh
+chmod +x installer.sh
 ```
 ## 🛠 Configuration
 
 ### Step 2: Configure Environment Variables
 
-Create a `.env.bootstrap` file or set environment variables:
+Before running the script, open the script using your text editor and set the environment variables as per your pre-configured environment:
 
 ```bash
 # Database Configuration
@@ -111,7 +111,7 @@ export DB_USERNAME="root"
 export DB_PASSWORD="your_password"
 
 # Application Settings
-export APP_URL="https://marketplace-pro.local"
+export APP_URL="http://localhost"
 export APP_CURRENCY="USD"
 
 # Admin Account
@@ -135,13 +135,13 @@ export HTDOCS_DIR="/path/to/your/webroot"
 
 ```bash
 # Basic installation
-./bootstrap_marketplace_pro.sh
+./installer.sh
 
 # Custom app directory
-./bootstrap_marketplace_pro.sh my-custom-marketplace
+./installer.sh my-custom-marketplace
 
 # With specific environment
-DB_PASSWORD="mypassword" ./bootstrap_marketplace_pro.sh marketplace-pro
+DB_PASSWORD="mypassword" ./installer.sh marketplace-pro
 ```
 
 ### Step 4: Complete Setup
