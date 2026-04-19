@@ -9,6 +9,8 @@
 
 ## 🚀 Quick Start
 
+> **Note:** `installer.sh` now installs required prerequisites automatically (where supported) before bootstrapping the project. You may be prompted for `sudo` depending on your environment.
+
 ```bash
 # Download the script
 wget https://raw.githubusercontent.com/wjak-official/laravel-marketplace-pro/main/installer.sh
@@ -95,6 +97,7 @@ cd laravel-marketplace-pro
 # Make script executable
 chmod +x installer.sh
 ```
+
 ## 🛠 Configuration
 
 ### Step 2: Configure Environment Variables
@@ -131,7 +134,7 @@ export APP_FEE_BUYER_REQUEST="499"   # $4.99
 export HTDOCS_DIR="/path/to/your/webroot"
 ```
 
-### Step 3: Run the Bootstrap Script
+### Step 3: Run the Installer Script
 
 ```bash
 # Basic installation
@@ -313,7 +316,7 @@ erDiagram
 ### General Questions
 
 **Q: What makes this different from other marketplace scripts?**  
-A: This is a **concierge marketplace** - the platform acts as a single point of contact between buyers and sellers. Instead of direct communication, all interactions go through the platform, which handles matching, negotiation, logistics, and billing.
+A: This is a **concierge marketplace** - the platform acts as a single point of contact between buyers and sellers. Instead of direct communication, all interactions go through the platform, whic[...]  
 
 **Q: Can I customize the fees?**  
 A: Yes! Fees are configurable via environment variables or the admin panel. The script sets defaults of $4.99 for activation fees, but you can adjust them.
@@ -410,13 +413,13 @@ npm run build
 #### Script Fails to Execute
 ```bash
 # Check script permissions
-ls -la bootstrap_marketplace_pro.sh
+ls -la installer.sh
 
 # Make executable
-chmod +x bootstrap_marketplace_pro.sh
+chmod +x installer.sh
 
 # Check for Windows line endings
-dos2unix bootstrap_marketplace_pro.sh
+dos2unix installer.sh
 ```
 
 #### Filament Installation Issues
@@ -499,7 +502,7 @@ We welcome contributions! Here's how to get started:
    nano .env.dev
    
    # Run development setup
-   DB_PASSWORD="dev_password" ./bootstrap_marketplace_pro.sh marketplace-dev
+   DB_PASSWORD="dev_password" ./installer.sh marketplace-dev
    ```
 
 3. **Install Development Tools**:
@@ -566,7 +569,7 @@ copies or substantial portions of the Software.
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+aUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
@@ -587,6 +590,6 @@ SOFTWARE.
 
 **Built with ❤️ for the Laravel community**
 
-[🐛 Report Bug](https://github.com/wjak-official/laravel-marketplace-pro/issues) • [✨ Request Feature](https://github.com/wjak-official/laravel-marketplace-pro/issues) • [💬 Discussions](https://github.com/wjak-official/laravel-marketplace-pro/discussions)
+[🐛 Report Bug](https://github.com/wjak-official/laravel-marketplace-pro/issues) • [✨ Request Feature](https://github.com/wjak-official/laravel-marketplace-pro/issues) • [💬 Discussions[...] 
 
 </div>
