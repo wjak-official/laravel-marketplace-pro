@@ -210,23 +210,24 @@ php /dev/stdin <<'PHPEOF'
 <?php
 $path="app/Http/Kernel.php"; $c=file_get_contents($path);
 if (strpos($c,"SecurityHeaders::class")===false) {
-  $c=preg_replace("/protected \\$middleware = \\[/","protected \$middleware = [\n        \\\\App\\\\Http\\\\Middleware\\\\SecurityHeaders::class,\n",$c,1);
+  $c=preg_replace('/protected \$middleware = \[/',"protected \$middleware = [\n        \\\\App\\\\Http\\\\Middleware\\\\SecurityHeaders::class,\n",$c,1);
 }
 if (strpos($c,"'admin' =>")===false) {
-  $c=preg_replace("/protected \\$middlewareAliases = \\[/","protected \$middlewareAliases = [\n        'admin' => \\\\App\\\\Http\\\\Middleware\\\\EnsureAdmin::class,\n",$c,1);
+  $c=preg_replace('/protected \$middlewareAliases = \[/',"protected \$middlewareAliases = [\n        'admin' => \\\\App\\\\Http\\\\Middleware\\\\EnsureAdmin::class,\n",$c,1);
 }
 file_put_contents($path,$c);
 PHPEOF
 
 echo "==> Update User model for HasRoles"
-php -r '
+php /dev/stdin <<'PHPEOF'
+<?php
 $p="app/Models/User.php"; $c=file_get_contents($p);
 if (strpos($c,"HasRoles")===false) {
   $c=str_replace("use Illuminate\\Notifications\\Notifiable;","use Illuminate\\Notifications\\Notifiable;\nuse Spatie\\Permission\\Traits\\HasRoles;",$c);
   $c=preg_replace('/use ((?:HasApiTokens,\s*)?HasFactory,\s*Notifiable)\s*;/','use $1, HasRoles;',$c);
 }
 file_put_contents($p,$c);
-'
+PHPEOF
 
 echo "==> Core models migrations"
 make_model_if_missing SellerListing
@@ -723,18 +724,19 @@ class BuyerRequestPolicy
 PHP
 
 echo "==> Register policies"
-php -r '
+php /dev/stdin <<'PHPEOF'
+<?php
 $p="app/Providers/AuthServiceProvider.php"; $c=file_get_contents($p);
 if (strpos($c,"SellerListing::class")===false) {
-  $c=preg_replace("/namespace App\\\\Providers;\\n\\nuse /",
-"namespace App\\\\Providers;\n\nuse App\\\\Models\\\\SellerListing;\nuse App\\\\Models\\\\BuyerRequest;\nuse App\\\\Policies\\\\SellerListingPolicy;\nuse App\\\\Policies\\\\BuyerRequestPolicy;\n\nuse ",
+  $c=preg_replace('/namespace App\\\\Providers;\n\nuse /',
+"namespace App\\Providers;\n\nuse App\\Models\\SellerListing;\nuse App\\Models\\BuyerRequest;\nuse App\\Policies\\SellerListingPolicy;\nuse App\\Policies\\BuyerRequestPolicy;\n\nuse ",
 $c,1);
-  $c=preg_replace("/protected \\$policies = \\[/",
+  $c=preg_replace('/protected \$policies = \[/',
 "protected \$policies = [\n        SellerListing::class => SellerListingPolicy::class,\n        BuyerRequest::class => BuyerRequestPolicy::class,\n",
 $c,1);
 }
 file_put_contents($p,$c);
-'
+PHPEOF
 
 echo "==> Controllers (Public pages + App pages + flows + payments + webhook)"
 php artisan make:controller PublicController >/dev/null
