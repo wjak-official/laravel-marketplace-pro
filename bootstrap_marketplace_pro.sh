@@ -223,7 +223,7 @@ php -r '
 $p="app/Models/User.php"; $c=file_get_contents($p);
 if (strpos($c,"HasRoles")===false) {
   $c=str_replace("use Illuminate\\Notifications\\Notifiable;","use Illuminate\\Notifications\\Notifiable;\nuse Spatie\\Permission\\Traits\\HasRoles;",$c);
-  $c=str_replace("use HasFactory, Notifiable;","use HasFactory, Notifiable, HasRoles;",$c);
+  $c=preg_replace('/use ((?:HasApiTokens,\s*)?HasFactory,\s*Notifiable)\s*;/','use $1, HasRoles;',$c);
 }
 file_put_contents($p,$c);
 '
