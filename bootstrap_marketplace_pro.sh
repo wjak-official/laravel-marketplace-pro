@@ -206,16 +206,17 @@ class SecurityHeaders
 PHP
 
 echo "==> Register middleware aliases"
-php -r '
+php - <<'PHPEOF'
+<?php
 $path="app/Http/Kernel.php"; $c=file_get_contents($path);
 if (strpos($c,"SecurityHeaders::class")===false) {
   $c=preg_replace("/protected \\$middleware = \\[/","protected \$middleware = [\n        \\\\App\\\\Http\\\\Middleware\\\\SecurityHeaders::class,\n",$c,1);
 }
-if (strpos($c,"\'admin\' =>")===false) {
-  $c=preg_replace("/protected \\$middlewareAliases = \\[/","protected \$middlewareAliases = [\n        \'admin\' => \\\\App\\\\Http\\\\Middleware\\\\EnsureAdmin::class,\n",$c,1);
+if (strpos($c,"'admin' =>")===false) {
+  $c=preg_replace("/protected \\$middlewareAliases = \\[/","protected \$middlewareAliases = [\n        'admin' => \\\\App\\\\Http\\\\Middleware\\\\EnsureAdmin::class,\n",$c,1);
 }
 file_put_contents($path,$c);
-'
+PHPEOF
 
 echo "==> Update User model for HasRoles"
 php -r '
