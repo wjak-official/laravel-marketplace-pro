@@ -95,6 +95,7 @@ cd laravel-marketplace-pro
 # Make script executable
 chmod +x bootstrap_marketplace_pro.sh
 ```
+## 🛠 Configuration
 
 ### Step 2: Configure Environment Variables
 
@@ -586,6 +587,6 @@ SOFTWARE.
 
 **Built with ❤️ for the Laravel community**
 
-[🐛 Report Bug](https://github.com/YOUR_USERNAME/laravel-marketplace-pro/issues) • [✨ Request Feature](https://github.com/YOUR_USERNAME/laravel-marketplace-pro/issues) • [💬 Discussions](https://github.com/YOUR_USERNAME/laravel-marketplace-pro/discussions)
+[🐛 Report Bug](https://github.com/wjak-official/laravel-marketplace-pro/issues) • [✨ Request Feature](https://github.com/wjak-official/laravel-marketplace-pro/issues) • [💬 Discussions](https://github.com/wjak-official/laravel-marketplace-pro/discussions)
 
 </div>
