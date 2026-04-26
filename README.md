@@ -410,13 +410,13 @@ npm run build
 #### Script Fails to Execute
 ```bash
 # Check script permissions
-ls -la bootstrap_marketplace_pro.sh
+ls -la installer.sh
 
 # Make executable
-chmod +x bootstrap_marketplace_pro.sh
+chmod +x installer.sh
 
 # Check for Windows line endings
-dos2unix bootstrap_marketplace_pro.sh
+dos2unix installer.sh
 ```
 
 #### Filament Installation Issues
@@ -486,7 +486,7 @@ We welcome contributions! Here's how to get started:
 
 1. **Fork and Clone**:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/laravel-marketplace-pro.git
+   git clone https://github.com/wjak-official/laravel-marketplace-pro.git
    cd laravel-marketplace-pro
    ```
 
@@ -499,7 +499,7 @@ We welcome contributions! Here's how to get started:
    nano .env.dev
    
    # Run development setup
-   DB_PASSWORD="dev_password" ./bootstrap_marketplace_pro.sh marketplace-dev
+   DB_PASSWORD="dev_password" ./installer.sh marketplace-dev
    ```
 
 3. **Install Development Tools**:
