@@ -2,28 +2,17 @@
 set -euo pipefail
 
 APP_DIR="${1:-marketplace-pro}"
-APP_URL="${APP_URL:-http://localhost:8000}"
+APP_URL="${APP_URL:-https://marketplace-pro.mynet}"
 
-DB_CONNECTION="${DB_CONNECTION:-sqlite}"
+DB_CONNECTION="${DB_CONNECTION:-mysql}"
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
-DB_DATABASE="${DB_DATABASE:-}"
+DB_DATABASE="${DB_DATABASE:-marketplace_pro}"
 DB_USERNAME="${DB_USERNAME:-root}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@marketplace.mynet}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin12345!}"
-
-STRIPE_KEY="${STRIPE_KEY:-pk_test_change_me}"
-STRIPE_SECRET="${STRIPE_SECRET:-sk_test_change_me}"
-STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-whsec_change_me}"
-
-APP_CURRENCY="${APP_CURRENCY:-USD}"
-APP_FEE_SELLER_LISTING="${APP_FEE_SELLER_LISTING:-499}"
-APP_FEE_BUYER_REQUEST="${APP_FEE_BUYER_REQUEST:-499}"
-
-# Composer flags to bypass missing extensions on this host
-COMPOSER_IGNORE="--ignore-platform-req=ext-intl --ignore-platform-req=ext-zip --ignore-platform-req=php"
 
 HTDOCS_DIR_DEFAULT="/shared/httpd/"
 if [ -d "${HTDOCS_DIR_DEFAULT}" ]; then
@@ -61,27 +50,28 @@ install_breeze() {
 }
 
 install_breeze_step() {
-  # Spoof missing extensions + wrap composer so breeze:install's internal
-  # `composer update` also gets the platform-ignore flags (needed on PHP 8.4
-  # because inertia-laravel 0.6.x caps at PHP 8.3).
   composer config platform.ext-intl 8.4.0
   composer config platform.ext-zip 8.4.0
 
-  local _orig _tmp
-  _orig="$(which composer)"
-  _tmp="$(mktemp -d)"
-  cat > "${_tmp}/composer" <<WRAPPER
+  # Wrap the composer binary so every composer call (including those
+  # made internally by `php artisan breeze:install`) gets
+  # --ignore-platform-req=php appended, allowing inertia-laravel 0.6.x
+  # (which caps at PHP 8.3) to install on PHP 8.4.
+  local _orig_composer _tmp_dir
+  _orig_composer="$(which composer)"
+  _tmp_dir="$(mktemp -d)"
+  cat > "${_tmp_dir}/composer" <<WRAPPER
 #!/usr/bin/env bash
-exec "${_orig}" "\$@" ${COMPOSER_IGNORE}
+exec "${_orig_composer}" "\$@" --ignore-platform-req=php --ignore-platform-req=ext-intl --ignore-platform-req=ext-zip
 WRAPPER
-  chmod +x "${_tmp}/composer"
-  export PATH="${_tmp}:${PATH}"
+  chmod +x "${_tmp_dir}/composer"
+  export PATH="${_tmp_dir}:${PATH}"
 
   composer require laravel/breeze:"^1.0" --dev
   install_breeze
 
-  export PATH="${PATH#"${_tmp}:"}"
-  rm -rf "${_tmp}"
+  export PATH="${PATH#"${_tmp_dir}:"}"
+  rm -rf "${_tmp_dir}"
 }
 
 make_model_if_missing() {
@@ -112,174 +102,63 @@ copy_to_htdocs_step() {
 
 BASE_DIR="$(pwd)"
 
-# ─────────────────────────────────────────────
-#  STEP 1 — Create / locate the Laravel project
-# ─────────────────────────────────────────────
-echo "==> Creating/using Laravel app in: ${APP_DIR}"
-if [ -d "${APP_DIR}" ]; then
-  if [ ! -f "${APP_DIR}/composer.json" ]; then
-    echo "ERROR: ${APP_DIR} exists but is not a Laravel app (missing composer.json)."
-    exit 1
-  fi
-else
-  composer create-project laravel/laravel:"^10.0" "${APP_DIR}" --prefer-dist --no-interaction
-fi
+# echo "==> Creating/using Laravel app in: ${APP_DIR}"
+# if [ -d "${APP_DIR}" ]; then
+#   if [ ! -f "${APP_DIR}/composer.json" ]; then
+#     echo "ERROR: ${APP_DIR} exists but is not a Laravel app (missing composer.json)."
+#     exit 1
+#   fi
+# else
+#   # composer create-project laravel/laravel "${APP_DIR}"
+# fi
 
-cd "${APP_DIR}"
-SRC_DIR="${BASE_DIR}/${APP_DIR}"
-STATE_FILE=".bootstrap_state"
-touch "${STATE_FILE}"
+# cd "${APP_DIR}"
+# SRC_DIR="${BASE_DIR}/${APP_DIR}"
+# STATE_FILE=".bootstrap_state"
+# touch "${STATE_FILE}"
 
-# ─────────────────────────────────────────────
-#  STEP 2 — .env
-# ─────────────────────────────────────────────
-echo "==> .env"
-if [ ! -f .env ]; then
-  cp .env.example .env
-  php artisan key:generate
-fi
+# echo "==> .env"
+#cp .env.example .env
+#php artisan key:generate
 
-# For SQLite: default DB_DATABASE to the project sqlite file
-if [ "${DB_CONNECTION}" = "sqlite" ] && [ -z "${DB_DATABASE}" ]; then
-  DB_DATABASE="$(pwd)/database/database.sqlite"
-fi
-touch "${DB_DATABASE}" 2>/dev/null || true
+#php -r '
+# $env=file_get_contents(".env");
+# $set = [
+#  "APP_URL" => "'"${APP_URL}"'",
+#  "DB_CONNECTION" => "'"${DB_CONNECTION}"'",
+#  "DB_HOST" => "'"${DB_HOST}"'",
+#  "DB_PORT" => "'"${DB_PORT}"'",
+#  "DB_DATABASE" => "'"${DB_DATABASE}"'",
+#  "DB_USERNAME" => "'"${DB_USERNAME}"'",
+#  "DB_PASSWORD" => "'"${DB_PASSWORD}"'",
+# ];
+# foreach ($set as $k=>$v) {
+#   $env=preg_replace("/^".$k."=.*/m", $k."=".$v, $env);
+# }
+# $append = "\nAPP_CURRENCY=USD\nAPP_FEE_SELLER_LISTING=499\nAPP_FEE_BUYER_REQUEST=499\n".
+#           "STRIPE_KEY=pk_test_change_me\nSTRIPE_SECRET=sk_test_change_me\nSTRIPE_WEBHOOK_SECRET=whsec_change_me\n";
+# if (!preg_match("/^APP_CURRENCY=/m", $env)) $env .= $append;
+# file_put_contents(".env",$env);
+# '
 
-php /dev/stdin <<PHPEOF
-<?php
-\$env = file_get_contents(".env");
-\$set = [
-  "APP_URL"       => "${APP_URL}",
-  "DB_CONNECTION" => "${DB_CONNECTION}",
-  "DB_HOST"       => "${DB_HOST}",
-  "DB_PORT"       => "${DB_PORT}",
-  "DB_DATABASE"   => "${DB_DATABASE}",
-  "DB_USERNAME"   => "${DB_USERNAME}",
-  "DB_PASSWORD"   => "${DB_PASSWORD}",
-];
-foreach (\$set as \$k => \$v) {
-  if (preg_match("/^\${k}=/m", \$env)) {
-    \$env = preg_replace("/^\${k}=.*/m", \$k . "=" . \$v, \$env);
-  } else {
-    \$env .= "\n\${k}=\${v}";
-  }
-}
-\$extra = [
-  "APP_CURRENCY"           => "${APP_CURRENCY}",
-  "APP_FEE_SELLER_LISTING" => "${APP_FEE_SELLER_LISTING}",
-  "APP_FEE_BUYER_REQUEST"  => "${APP_FEE_BUYER_REQUEST}",
-  "STRIPE_KEY"             => "${STRIPE_KEY}",
-  "STRIPE_SECRET"          => "${STRIPE_SECRET}",
-  "STRIPE_WEBHOOK_SECRET"  => "${STRIPE_WEBHOOK_SECRET}",
-];
-foreach (\$extra as \$k => \$v) {
-  if (!preg_match("/^\${k}=/m", \$env)) \$env .= "\n\${k}=\${v}";
-}
-file_put_contents(".env", \$env);
-PHPEOF
-
-# ─────────────────────────────────────────────
-#  STEP 3 — PHP packages
-# ─────────────────────────────────────────────
-echo "==> Install PHP packages"
-composer config platform.ext-intl 8.4.0
-composer config platform.ext-zip 8.4.0
-
-if [ ! -d vendor/filament ]; then
-  composer require filament/filament:"^3.0" ${COMPOSER_IGNORE} --no-interaction
-fi
-if [ ! -f app/Providers/Filament/AdminPanelProvider.php ]; then
-  php artisan filament:install --panels --no-interaction
-fi
-
-if ! grep -q 'spatie/laravel-permission' composer.json 2>/dev/null; then
-  composer require spatie/laravel-permission ${COMPOSER_IGNORE} --no-interaction
-fi
-if [ ! -f config/permission.php ]; then
-  php artisan vendor:publish --provider="Spatie\\Permission\\PermissionServiceProvider" --no-interaction
-fi
-
-if ! grep -q 'stripe/stripe-php' composer.json 2>/dev/null; then
-  composer require stripe/stripe-php ${COMPOSER_IGNORE} --no-interaction
-fi
-
-# ─────────────────────────────────────────────
-#  STEP 4 — Breeze (Inertia + Vue)
-# ─────────────────────────────────────────────
 run_step "Breeze (Inertia + Vue)" install_breeze_step
 
-# ─────────────────────────────────────────────
-#  STEP 5 — npm packages
-# ─────────────────────────────────────────────
-echo "==> npm packages"
-npm install --save \
-  @inertiajs/vue3 vue @vitejs/plugin-vue \
-  @headlessui/vue @heroicons/vue @vueuse/core \
-  aos @studio-freight/lenis 2>/dev/null
-npm install --save-dev tailwindcss@^3 postcss autoprefixer 2>/dev/null
+# echo "==> Styling & animation libs"
+# # npm install @headlessui/vue @heroicons/vue @vueuse/core aos @studio-freight/lenis
 
-# ─────────────────────────────────────────────
-#  STEP 6 — vite.config.js + app.js + Tailwind
-# ─────────────────────────────────────────────
-echo "==> vite.config.js"
-cat > vite.config.js <<'VITE'
-import { defineConfig } from 'vite';
-import laravel from 'laravel-vite-plugin';
-import vue from '@vitejs/plugin-vue';
+# # echo "==> Filament + Roles + Stripe"
+# composer require filament/filament:"^3.0"
+# if [ ! -f app/Providers/Filament/AdminPanelProvider.php ]; then
+#   php artisan filament:install --panels
+# fi
 
-export default defineConfig({
-    plugins: [
-        laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
-            refresh: true,
-        }),
-        vue({
-            template: {
-                transformAssetUrls: { base: null, includeAbsolute: false },
-            },
-        }),
-    ],
-    resolve: { alias: { '@': '/resources/js' } },
-});
-VITE
+# composer require spatie/laravel-permission
+# if [ ! -f config/permission.php ]; then
+#   php artisan vendor:publish --provider="Spatie\\Permission\\PermissionServiceProvider"
+# fi
 
-echo "==> resources/js/app.js (Inertia bootstrap)"
-cat > resources/js/app.js <<'JS'
-import './bootstrap';
-import { createApp, h } from 'vue';
-import { createInertiaApp } from '@inertiajs/vue3';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+# composer require stripe/stripe-php
 
-createInertiaApp({
-    resolve: name => resolvePageComponent(
-        `./Pages/${name}.vue`,
-        import.meta.glob('./Pages/**/*.vue')
-    ),
-    setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .mount(el);
-    },
-});
-JS
-
-echo "==> tailwind.config.js"
-./node_modules/.bin/tailwindcss init -p 2>/dev/null || true
-cat > tailwind.config.js <<'TWCFG'
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    './resources/**/*.{vue,js,ts,jsx,tsx,blade.php}',
-    './vendor/filament/**/*.blade.php',
-  ],
-  theme: { extend: {} },
-  plugins: [],
-}
-TWCFG
-
-# ─────────────────────────────────────────────
-#  STEP 7 — App scaffolding
-# ─────────────────────────────────────────────
 echo "==> Create directories"
 mkdir -p app/Enums app/Services app/Http/Middleware app/Http/Controllers app/Http/Requests
 mkdir -p app/Models app/Policies app/Jobs

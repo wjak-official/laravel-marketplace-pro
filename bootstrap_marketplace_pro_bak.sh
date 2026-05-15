@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ─────────────────────────────────────────────
+#  Configuration — override via env vars or $1
+# ─────────────────────────────────────────────
 APP_DIR="${1:-marketplace-pro}"
 APP_URL="${APP_URL:-http://localhost:8000}"
 
 DB_CONNECTION="${DB_CONNECTION:-sqlite}"
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
-DB_DATABASE="${DB_DATABASE:-}"
+DB_DATABASE="${DB_DATABASE:-}"   # auto-set below for sqlite
 DB_USERNAME="${DB_USERNAME:-root}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 
@@ -22,15 +25,15 @@ APP_CURRENCY="${APP_CURRENCY:-USD}"
 APP_FEE_SELLER_LISTING="${APP_FEE_SELLER_LISTING:-499}"
 APP_FEE_BUYER_REQUEST="${APP_FEE_BUYER_REQUEST:-499}"
 
-# Composer flags to bypass missing extensions on this host
-COMPOSER_IGNORE="--ignore-platform-req=ext-intl --ignore-platform-req=ext-zip --ignore-platform-req=php"
-
 HTDOCS_DIR_DEFAULT="/shared/httpd/"
 if [ -d "${HTDOCS_DIR_DEFAULT}" ]; then
   HTDOCS_DIR="${HTDOCS_DIR:-${HTDOCS_DIR_DEFAULT}}"
 else
   HTDOCS_DIR="${HTDOCS_DIR:-htdocs}"
 fi
+
+# Composer flags to work around missing extensions on this host
+COMPOSER_IGNORE="--ignore-platform-req=ext-intl --ignore-platform-req=ext-zip --ignore-platform-req=php"
 
 STATE_FILE=""
 
@@ -61,12 +64,12 @@ install_breeze() {
 }
 
 install_breeze_step() {
-  # Spoof missing extensions + wrap composer so breeze:install's internal
-  # `composer update` also gets the platform-ignore flags (needed on PHP 8.4
-  # because inertia-laravel 0.6.x caps at PHP 8.3).
+  # Spoof missing extensions so Breeze 1.x + inertia-laravel 0.6.x resolve on PHP 8.4
   composer config platform.ext-intl 8.4.0
   composer config platform.ext-zip 8.4.0
 
+  # Wrap composer binary so artisan's internal `composer update` call inside
+  # breeze:install also gets the platform-ignore flags
   local _orig _tmp
   _orig="$(which composer)"
   _tmp="$(mktemp -d)"
@@ -77,7 +80,7 @@ WRAPPER
   chmod +x "${_tmp}/composer"
   export PATH="${_tmp}:${PATH}"
 
-  composer require laravel/breeze:"^1.0" --dev
+  composer require laravel/breeze:"^1.0" --dev ${COMPOSER_IGNORE}
   install_breeze
 
   export PATH="${PATH#"${_tmp}:"}"
@@ -139,7 +142,7 @@ if [ ! -f .env ]; then
   php artisan key:generate
 fi
 
-# For SQLite: default DB_DATABASE to the project sqlite file
+# For SQLite: default DB_DATABASE to the project's sqlite file
 if [ "${DB_CONNECTION}" = "sqlite" ] && [ -z "${DB_DATABASE}" ]; then
   DB_DATABASE="$(pwd)/database/database.sqlite"
 fi
@@ -149,13 +152,13 @@ php /dev/stdin <<PHPEOF
 <?php
 \$env = file_get_contents(".env");
 \$set = [
-  "APP_URL"       => "${APP_URL}",
-  "DB_CONNECTION" => "${DB_CONNECTION}",
-  "DB_HOST"       => "${DB_HOST}",
-  "DB_PORT"       => "${DB_PORT}",
-  "DB_DATABASE"   => "${DB_DATABASE}",
-  "DB_USERNAME"   => "${DB_USERNAME}",
-  "DB_PASSWORD"   => "${DB_PASSWORD}",
+  "APP_URL"          => "${APP_URL}",
+  "DB_CONNECTION"    => "${DB_CONNECTION}",
+  "DB_HOST"          => "${DB_HOST}",
+  "DB_PORT"          => "${DB_PORT}",
+  "DB_DATABASE"      => "${DB_DATABASE}",
+  "DB_USERNAME"      => "${DB_USERNAME}",
+  "DB_PASSWORD"      => "${DB_PASSWORD}",
 ];
 foreach (\$set as \$k => \$v) {
   if (preg_match("/^\${k}=/m", \$env)) {
@@ -164,16 +167,18 @@ foreach (\$set as \$k => \$v) {
     \$env .= "\n\${k}=\${v}";
   }
 }
-\$extra = [
-  "APP_CURRENCY"           => "${APP_CURRENCY}",
-  "APP_FEE_SELLER_LISTING" => "${APP_FEE_SELLER_LISTING}",
-  "APP_FEE_BUYER_REQUEST"  => "${APP_FEE_BUYER_REQUEST}",
-  "STRIPE_KEY"             => "${STRIPE_KEY}",
-  "STRIPE_SECRET"          => "${STRIPE_SECRET}",
-  "STRIPE_WEBHOOK_SECRET"  => "${STRIPE_WEBHOOK_SECRET}",
+\$append = [
+  "APP_CURRENCY"             => "${APP_CURRENCY}",
+  "APP_FEE_SELLER_LISTING"   => "${APP_FEE_SELLER_LISTING}",
+  "APP_FEE_BUYER_REQUEST"    => "${APP_FEE_BUYER_REQUEST}",
+  "STRIPE_KEY"               => "${STRIPE_KEY}",
+  "STRIPE_SECRET"            => "${STRIPE_SECRET}",
+  "STRIPE_WEBHOOK_SECRET"    => "${STRIPE_WEBHOOK_SECRET}",
 ];
-foreach (\$extra as \$k => \$v) {
-  if (!preg_match("/^\${k}=/m", \$env)) \$env .= "\n\${k}=\${v}";
+foreach (\$append as \$k => \$v) {
+  if (!preg_match("/^\${k}=/m", \$env)) {
+    \$env .= "\n\${k}=\${v}";
+  }
 }
 file_put_contents(".env", \$env);
 PHPEOF
@@ -182,24 +187,26 @@ PHPEOF
 #  STEP 3 — PHP packages
 # ─────────────────────────────────────────────
 echo "==> Install PHP packages"
+
+# Spoof missing extensions globally for all subsequent composer calls
 composer config platform.ext-intl 8.4.0
 composer config platform.ext-zip 8.4.0
 
-if [ ! -d vendor/filament ]; then
+if ! php -r "exit(interface_exists('Filament\Panel\PanelContract') ? 0 : 1);" 2>/dev/null; then
   composer require filament/filament:"^3.0" ${COMPOSER_IGNORE} --no-interaction
 fi
 if [ ! -f app/Providers/Filament/AdminPanelProvider.php ]; then
   php artisan filament:install --panels --no-interaction
 fi
 
-if ! grep -q 'spatie/laravel-permission' composer.json 2>/dev/null; then
+if ! php -r "exit(class_exists('Spatie\Permission\PermissionServiceProvider') ? 0 : 1);" 2>/dev/null; then
   composer require spatie/laravel-permission ${COMPOSER_IGNORE} --no-interaction
 fi
 if [ ! -f config/permission.php ]; then
   php artisan vendor:publish --provider="Spatie\\Permission\\PermissionServiceProvider" --no-interaction
 fi
 
-if ! grep -q 'stripe/stripe-php' composer.json 2>/dev/null; then
+if ! php -r "exit(class_exists('Stripe\StripeClient') ? 0 : 1);" 2>/dev/null; then
   composer require stripe/stripe-php ${COMPOSER_IGNORE} --no-interaction
 fi
 
@@ -264,7 +271,9 @@ createInertiaApp({
 JS
 
 echo "==> tailwind.config.js"
-./node_modules/.bin/tailwindcss init -p 2>/dev/null || true
+if [ ! -f tailwind.config.js ]; then
+  ./node_modules/.bin/tailwindcss init -p 2>/dev/null || true
+fi
 cat > tailwind.config.js <<'TWCFG'
 /** @type {import('tailwindcss').Config} */
 export default {
